@@ -425,7 +425,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
         return tf.train.Scaffold()
 
-        scaffold_fn = tpu_scaffold
+      scaffold_fn = tpu_scaffold
     else:
       tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
@@ -439,24 +439,28 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         #                     init_string)
     output_spec = None
     if not mode == tf.estimator.ModeKeys.PREDICT:
-      indices = [0, 1, 2, 3] # indice参数告诉评估矩阵评估哪些标签
-      # Metrics
-      weights = tf.sequence_mask(seq_length, maxlen=FLAGS.max_seq_length)
-      metrics = {
-          'acc': tf.metrics.accuracy(label_ids, pred_ids, weights),
-          'precision': precision(label_ids, pred_ids, params['num_labels'], indices, weights),
-          'recall': recall(label_ids, pred_ids, params['num_labels'], indices, weights),
-          'f1': f1(label_ids, pred_ids, params['num_labels'], indices, weights),
-      }
-      for metric_name, op in metrics.items():
-          tf.summary.scalar(metric_name, op[1])
+      def metric_fn(seq_length, max_len, label_ids, pred_ids):
+        indices = [0, 1, 2, 3] # indice参数告诉评估矩阵评估哪些标签
+        # Metrics
+        weights = tf.sequence_mask(seq_length, maxlen=max_len)
+        metrics = {
+            'acc': tf.metrics.accuracy(label_ids, pred_ids, weights),
+            'precision': precision(label_ids, pred_ids, params['num_labels'], indices, weights),
+            'recall': recall(label_ids, pred_ids, params['num_labels'], indices, weights),
+            'f1': f1(label_ids, pred_ids, params['num_labels'], indices, weights),
+        }
+        for metric_name, op in metrics.items():
+            tf.summary.scalar(metric_name, op[1])
+        return eval_metrics
+
+      eval_metrics = (metric_fn, [seq_length, FLAGS.max_seq_length, label_ids, pred_ids])
       if mode == tf.estimator.ModeKeys.EVAL:
         output_spec = tf.contrib.tpu.TPUEstimatorSpec(
               mode=mode,
               loss=total_loss,
               scaffold_fn=scaffold_fn,
-              eval_metric_ops=metrics) 
-      else:
+              eval_metrics=eval_metrics) 
+      if mode == tf.estimator.ModeKeys.TRAIN:
         train_op = optimization.create_optimizer(
           total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
         output_spec = tf.contrib.tpu.TPUEstimatorSpec(
