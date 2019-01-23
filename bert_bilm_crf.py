@@ -363,8 +363,8 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids, l
   with tf.variable_scope('Graph', reuse=None, custom_getter=None):
       # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.max_seq_length) # 序列标注问题中一般lstm单元个数就是max_seq_length
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.max_seq_length)
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.lstm_units) # 序列标注问题中一般lstm单元个数就是max_seq_length
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.lstm_units)
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
     output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=seq_length)
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=seq_length)
