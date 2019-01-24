@@ -13,6 +13,12 @@ python .\bert_bilm_crf.py --task_name=ner --do_train=true --do_eval=false --do_p
 --init_checkpoint=path\to\chinese_L-12_H-768_A-12\bert_model.ckpt --max_seq_length=50 --train_batch_size=32 \
 --learning_rate=5e-5 --num_train_epochs=2.0 --output_dir=/tmp/ner_output/
 ```
+* 3.导出训练结果
+运行`export.py`
+* 4.部署在服务端
+运行`export.sh`
+* 5调用例子
+`clien.py`
 ### 4.关于训练数据
 在给出的example.tsv中有两行示例数据，把格式整理成类似的即可
 ***
@@ -30,5 +36,11 @@ python .\bert_bilm_crf.py --task_name=ner --do_train=true --do_eval=false --do_p
 --init_checkpoint=path\to\chinese_L-12_H-768_A-12\bert_model.ckpt --max_seq_length=50 --train_batch_size=32 \
 --learning_rate=5e-5 --num_train_epochs=2.0 --output_dir=/tmp/ner_output/
 ```
+* 3.export model
+run `export.py`
+* 4.deploy
+run `export.sh`
+* 5.example
+`clien.py`
 ### 4.about trainning data
 there is an example data in `example.tsv` to show the formate, you are surpoed to transform your data into this formate, or you can modify the `input_fn` in `bert_bilm_crf.py`
