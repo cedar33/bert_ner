@@ -1,18 +1,6 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Run BERT on SQuAD 1.1 and SQuAD 2.0."""
+"""BERT NER"""
+
+__author__ = "Chenyang Yuan"
 
 from __future__ import absolute_import
 from __future__ import division
@@ -206,8 +194,8 @@ class NerProcessor(DataProcessor):
 
   def get_labels(self):
     """See base class."""
-    # return ["contradiction", "BPER", "BLOC", "BORG", "BTIME", "IPER", "ILOC", "IORG", "ITIME", "EPER", "ELOC", "EORG", "ETIME", "O", "OTHER"]
-    return ["contradiction", "B", "I", "E", "O"]
+    return ["contradiction", "BPER", "BLOC", "BORG", "BTIME", "IPER", "ILOC", "IORG", "ITIME", "EPER", "ELOC", "EORG", "ETIME", "O", "OTHER"]
+    # return ["contradiction", "B", "I", "E", "O"]
 
   def _create_examples(self, lines, set_type):
     '''NER任务训练数据产生方法'''
@@ -271,6 +259,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
         label_ids=[0] * max_seq_length,
         seq_length = max_seq_length,
         is_real_example=False)
+
   label_map = {}
   for (i, label) in enumerate(label_list):
     label_map[label] = i
@@ -363,8 +352,8 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids, l
   with tf.variable_scope('Graph', reuse=None, custom_getter=None):
       # LSTM
     t = tf.transpose(embeddings, perm=[1, 0, 2])
-    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.lstm_units) # 序列标注问题中一般lstm单元个数就是max_seq_length
-    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(FLAGS.lstm_units)
+    lstm_cell_fw = tf.contrib.rnn.LSTMBlockFusedCell(128) # 序列标注问题中一般lstm单元个数就是max_seq_length
+    lstm_cell_bw = tf.contrib.rnn.LSTMBlockFusedCell(128)
     lstm_cell_bw = tf.contrib.rnn.TimeReversedFusedRNN(lstm_cell_bw)
     output_fw, _ = lstm_cell_fw(t, dtype=tf.float32, sequence_length=seq_length)
     output_bw, _ = lstm_cell_bw(t, dtype=tf.float32, sequence_length=seq_length)
@@ -372,8 +361,8 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids, l
     output = tf.transpose(output, perm=[1, 0, 2])
     output = tf.layers.dropout(output, rate=0.5, training=is_training)
     # CRF
-    logits = tf.layers.dense(output, 5)
-    crf_params = tf.get_variable("crf", [5, 5], dtype=tf.float32)
+    logits = tf.layers.dense(output, num_labels)
+    crf_params = tf.get_variable("crf", [num_labels, num_labels], dtype=tf.float32)
     trans = tf.get_variable(
         "transitions",
         shape=[num_labels, num_labels],
@@ -413,6 +402,8 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     (total_loss, logits, trans, pred_ids) = create_model(
             bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
             seq_length, params['num_labels'], use_one_hot_embeddings)
+    tf.logging.info("****num_labels****")
+    tf.logging.info("number_labels: %s" % params['num_labels'])
     tvars = tf.trainable_variables()
     scaffold_fn = None
     # 加载BERT模型
@@ -439,8 +430,9 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         #                     init_string)
     output_spec = None
     if not mode == tf.estimator.ModeKeys.PREDICT:
+      eval_metrics = None
       def metric_fn(seq_length, max_len, label_ids, pred_ids):
-        indices = [0, 1, 2, 3] # indice参数告诉评估矩阵评估哪些标签
+        indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] # indice参数告诉评估矩阵评估哪些标签
         # Metrics
         weights = tf.sequence_mask(seq_length, maxlen=max_len)
         metrics = {
@@ -453,7 +445,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             tf.summary.scalar(metric_name, op[1])
         return eval_metrics
 
-      eval_metrics = (metric_fn, [seq_length, FLAGS.max_seq_length, label_ids, pred_ids])
+      eval_metrics = metric_fn(seq_length, FLAGS.max_seq_length, label_ids, pred_ids)
       if mode == tf.estimator.ModeKeys.EVAL:
         output_spec = tf.contrib.tpu.TPUEstimatorSpec(
               mode=mode,
@@ -467,6 +459,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
               mode=mode,
               loss=total_loss,
               train_op=train_op,
+              eval_metrics=eval_metrics,
               scaffold_fn=scaffold_fn)  # 钩子，这里用来将BERT中的参数作为我们模型的初始值
     else:
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
@@ -728,6 +721,10 @@ def main(_):
     tf.logging.info("  Num examples = %d", len(train_examples))
     tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
     tf.logging.info("  Num steps = %d", num_train_steps)
+    tf.logging.info("***** evaluation *****")
+    tf.logging.info("  Num examples = %d", len(eval_examples))
+    tf.logging.info("  Batch size = %d", FLAGS.train_batch_size)
+    tf.logging.info("  Num steps = %d", num_train_steps)
     del train_examples
     del eval_examples
     train_input_fn = file_based_input_fn_builder(
@@ -742,7 +739,7 @@ def main(_):
         drop_remainder=True)
     # estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
     hook = tf.contrib.estimator.stop_if_no_increase_hook(
-        estimator, 'f1', 500, min_steps=50000, run_every_secs=300)
+        estimator, 'loss', 100000, min_steps=50000, run_every_secs=300)
     train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, hooks=[hook])
     eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, throttle_secs=300)
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
