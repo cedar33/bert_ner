@@ -32,13 +32,8 @@ db = client['twitter']
 twitter_collection = db["tweets"]
 
 def twitter_gen():
-    for twitter in  twitter_collection.find({"label":{"$exists":False}},{"tweet_text":1, "_id":1}, no_cursor_timeout=True):
-        line = twitter["tweet_text"]
-        line = line.replace(" ","")
-        # print(line)
-        example = InputExample(0, zhconv.convert(re.sub(r'[^(\u4e00-\u9fa5|,|.|、|，|。|！|？|?|!)]', "", line, count=0, flags=0), "zh-cn"), "contradiction")
-        feature = convert_single_example(0, example, SENTALABEL, 128, tokenizer)
-        yield feature
+    # 查询数据库或者读取文件把文本转化为feature然后yeild出来
+     yield feature
 
 def twitter_id_gen(): # for update method, to tell method which twitter should be updated
     for twitter in   twitter_collection.find({"label":{"$exists":False}},{"tweet_text":1, "_id":1}, no_cursor_timeout=True):
@@ -47,18 +42,7 @@ def twitter_id_gen(): # for update method, to tell method which twitter should b
         yield id, line
 
 def getkeyword():
-    keyword_list = list()
-    connection = pymysql.connect(host='localhost',
-                             user='root',
-                             password='passwd',
-                             db='twitter',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor)
-    cursor = connection.cursor()
-    cursor.execute("SELECT word, code FROM tweet_senta_word")
-    result = cursor.fetchall()
-    for r in result:
-        keyword_list.append((r["code"], r["word"]))
+#    通过关键词进一步细分，这一步通过查库或者读取文件返回关键词列表
     return keyword_list
 
 def get_neg_type(keyword_list, line):
