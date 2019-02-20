@@ -45,5 +45,5 @@ run `export.sh`
 ### 4.about trainning data
 there is an example data in `example.tsv` to show the formate, you are surpoed to transform your data into this formate, or you can modify the `input_fn` in `bert_bilm_crf.py`
 ***
-更新情感分析方法：`bert_senta.py`,以及预测方法`senta_pred.py`
+更新情感分析方法：`bert_senta.py`,以及预测方法`senta_pred.py`，`senta_pred.py`中读取数据的方法都注释掉了使用时添加上自己的数据读取方式
 预测方法使用了dataset数据流的形式，单个预测耗时10ms
