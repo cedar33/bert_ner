@@ -26,8 +26,8 @@ tokenizer = tokenization.FullTokenizer(
     vocab_file=vocab_file, do_lower_case=False)
 SENTALABEL = ["contradiction", "negative", "positive"]
 
-
-client = MongoClient('localhost', 27017)
+port = 0
+client = MongoClient('localhost', port)
 db = client['twitter']
 twitter_collection = db["tweets"]
 
@@ -50,7 +50,7 @@ def getkeyword():
     keyword_list = list()
     connection = pymysql.connect(host='localhost',
                              user='root',
-                             password='stark',
+                             password='passwd',
                              db='twitter',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
@@ -74,15 +74,8 @@ def senta_update(id, label, line, keyword_list):
         label: predict output,
         line: line after cleanning
         keyword_list: keyword_list in mysql'''
-    neg_type = ""
-    if p == 1:
-        neg_type = get_neg_type(keyword_list, line)
-        # print(l, get_neg_type(keyword_list, l))
-    else:
-        # print(l,p)
-        neg_type = "POS"
-    # print(l[0])
-    twitter_collection.update({"_id": id}, {"$set": {"label": neg_type}})
+    # 更新文本情感分析结果
+    return 0
 
 class InputExample(object):
     """A single training/test example for simple sequence classification."""
